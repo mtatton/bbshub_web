@@ -1,0 +1,806 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <script>DEBUG=0;</script>
+  <!--
+  <script src="jquery-1.12.4.min.js"></script>
+  <script src="chosen.jquery.min.js"></script>
+  <link href="chosen.min.css" rel="stylesheet">
+  -->
+  <title>BBSHUB</title>
+  <!-- 
+    //
+    // Added Proxylist
+    // Input Now Accepts Cursor Keys
+    // Edited Toggle Full Screen
+    // Added Notes stored Locally to Browser
+    // program now remembers last font used
+    // Added Random BBS at start and toggle to turn that off
+    // Proxy Preserve on Reload
+    // Now remembers last visited BBS
+    // Added toggle for ssh / telnet
+    //
+    // Removed Swipe down
+    // Added button for cache reset
+    // Added button for reload
+    // Added Custom Address
+    //
+    // 20190801 Release v A001
+    //
+  -->
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+  <meta property="og:title" content="Bulletin Board Systems Hub" />
+  <meta name="description" content="Bulletin Board Systems Hub"/>
+  <meta name="theme-color" content="#000000" />
+  <link rel="shortcut icon" href="favicon.ico"/> 
+</head>
+<body bgcolor="black" onload="init();" style="padding-right: 100px;">
+<link rel="stylesheet" type="text/css" href="css/ftelnet.css">
+<!-- HERE THE TRUETYPE DEFINITION FOR TERMINAL -->
+<style>
+@font-face { font-family: 'AcPlus_Tandy1K-II_200L-2y'; src:url('fonts/AcPlus_Tandy1K-II_200L-2y.ttf') format('truetype'); }
+@font-face { font-family: 'AcPlus_Tandy1K-II_200L'; src:url('fonts/AcPlus_Tandy1K-II_200L.ttf') format('truetype'); }
+@font-face { font-family: 'amknight'; src:url('fonts/amknight.ttf') format('truetype'); }
+@font-face { font-family: 'amtopaz'; src:url('fonts/amtopaz.ttf') format('truetype'); }
+@font-face { font-family: 'hack'; src:url('fonts/hack.ttf') format('truetype'); }
+</style>
+<span id="fTelnetConsoleContainer">
+<span id="fTelnetConsole" style="font-family: monospace; white-space: pre; font-size: 7px; left: 0px; top: 0px; position: relative; display: none; cursor: none;">
+</span>
+<!-- <div id="fTelnetColorConsole" style="font-family: monospace; white-space: pre; font-size: 7px; position: absolute; top: 10px; left: 10px; z-index: 1; transparency: 1.0; display:none;"> -->
+</span>
+<!-- <canvas id="ftColors" width=320 heigth=200 style="position: absolute; left: 04px; top: 04px; z-index: 2; transparency: 0.5; background-blend-mode: saturation; display:hidden"> -->
+</canvas>
+<!-- <div id="fTelnetContainer" style="position:absolute; bottom: 0px" style="display: none;"> -->
+<span id="fTelnetContainer" style="position:absolute; bottom: 0px" >
+<input type="button" id="FULLSCREEN" class="fTelnetDimButton" onclick="toggleFullScreen()" value="O" style="color:#888888" onmouseover="fullScreenHoverIn(this)" onmouseout="dimHoverOut()" ondblclick="configHideAll()">
+<input id="KEYINPUT" class="ConfigInput" size="1" onclick="dimHoverOut()" onfocusout="fullScreenHoverIn(this)"> 
+<input type="button" id="changeDesign" class="fTelnetConnectButton" onclick="genTotp(); saveElementsValues(); changeDesign(); serverChange();" value="SAVE" onmouseover="fullScreenHoverIn(this)">
+<!-- <input type="button" id="ZMRECV" class="fTelnetConnectButton" onclick="fTelnet.ZDownload();" value="ZMRECV" onmouseover="fullScreenHoverIn(this)" accesskey="z"> -->
+<!-- <input id="KEYINPUT" class="ConfigInput" onpropertychange="TextChange(this)" size="1" oninput="inpKeyChange()" onkeydown="inpKeyDown(event)" onkeyup="inpKeyUp(event);" VALUE=""> -->
+<!-- <input id="KEYINPUT" class="ConfigInput" size="1" onchange="inpKeyChange();" onkeydown="inpKeyDown(event);" VALUE="">-->
+<script src="lib/ftelnet.rip.xfer.js" id="fTelnetScript"></script>
+<script src="lib/otp.js" id="otp"></script>
+<!-- <script src="ftelnet.min.js" id="fTelnetScript"></script> -->
+<script>
+  var Options = new fTelnetOptions();
+  Options.BareLFtoCRLF = false;
+  Options.BitsPerSecond = 57600;
+  Options.ConnectionType = 'telnet';
+  Options.Emulation = 'ansi-bbs';
+  Options.Enter = '\r';
+  Options.Font = 'CP437_4x8';
+  Options.Hostname = '';
+  Options.LocalEcho = false;
+  Options.Port = 23;
+  Options.ForceWss = true;
+  Options.ProxyHostname = 'bbshub.org';
+  Options.ProxyPort = 443;
+  Options.ProxyPortSecure = 443;
+  Options.ScreenColumns = 80;
+  Options.SplashScreen = "G1swbQ0KDQogICAgICAgICAgICAgICAbWzFtX19fG1szNm1fX18bWzBtXxtbMTszNm0gIBtbMzdtX19fG1szNm1fX19fG1szN20gIF9fXxtbMzZtX19fXyAgG1szN21fXxtbMzZtXyBfX18bWzM3bSBfXxtbMzZtXyBfX18gG1szN21fX18bWzM2bV9fX18NChtbMG0gICAgICAgICAgICAgIBtbMW18ICAgG1szNm1fICAgG1szN21cfBtbMzZtICAgXxtbMG0gICAbWzFtXBtbMzZtfCAgIF8gICAbWzM3bXwbWzM2bXwgICBZICAgG1szN218G1szNm0gICBZICAgG1szN218G1szNm0gICBfICAgXA0KG1swbSAgICAgICAgICAgICAgG1sxOzM2bXwuICAxICAgL3wuICAxICAgL3wgICAxX19ffHwuICAxICAgfC4gIHwgICB8LiAgMSAgIC8NChtbMG0gICAgICAgICAgICAgIBtbMTszNm18LiAgXyAgIFx8LiAgXyAgIFx8X19fXyAgIHx8LiAgXyAgIHwuICB8ICAgG1swOzM2bXwuG1sxbSAgXyAgIFwbWzBtDQogICAgICAgICAgICAgIBtbMTszNm18OiAgMSAgICB8OiAgMSAgICB8OiAgMSAgIHwbWzA7MzZtfDobWzFtICAbWzA7MzZtfBtbMW0gICB8OiAgMRtbMDszNm0gICB8OhtbMW0gIDEgICAgXA0KG1swbSAgICAgICAgICAgICAgG1sxOzM2bXw6G1swOzM2bTouG1sxbS4bWzA7MzZtIC4gIBtbMW18OjobWzA7MzZtLi4gLiAgG1sxbXw6G1swOzM2bTobWzFtLhtbMDszNm0uIC4gfHw6Oi58Oi4bWzFtIHw6G1swOzM2bTouLhtbMW0gLhtbMDszNm0gfDo6Li4gLhtbMzdtICAbWzM2bS8NChtbMzdtICAgICAgICAgICAgICAbWzE7MzZtYC0bWzA7MzZtLS0tLS0tJ2AtLS0tLS0tJ2AtLS0tLS0bWzFtLScbWzA7MzZtYC0tLSAtLS1gLS0tLS0tLWAtLS0tLS0tJw0KG1szN20NCiAgICAgICAgICAgIBtbMW1fX18bWzBtIBtbMTszNm1fX19fX19fICAgICAgIBtbMzdtX18bWzM2bSAgICAgICAgICAgICAbWzM3bV9fG1szNm0gICAbWzM3bV9fXxtbMzZtIF9fXyAgICAgICAgICAbWzM3bV9fG1szNm0NChtbMG0gICAgICAgICAgG1sxbS4nG1szNm0gIF98ICAgICAgIBtbMzdtLi0tLS0bWzM2bS18ICAuLS0tLS0uLS0tLS0bWzM3bXwbWzM2bSAgfF98ICAgWSAgIC4bWzM3bS0tLS0tG1szNm0uLRtbMzdtLXwbWzM2bSAgfA0KG1swbSAgICAgICAgICAbWzE7MzZtfCAgIBtbMDszNm1ffC4bWzFtfCAgIHwgG1szN218ICAbWzM2bS1fX3wgIHwgICAgIHwgIC1fX3wgICBffC4gICAgICB8ICBfICB8ICBfICB8DQobWzBtICAgICAgICAgIBtbMTszNm18G1swOzM2bV9ffCAbWzFtYBtbMDszNm0tfBtbMW0uICAbWzA7MzZtfC18X19fG1sxbV8bWzA7MzZtX3xfX3xfX3xfX3xfX19fX3xfX19ffC4gXBtbMW1fLyAgfBtbMDszNm1fX19fXxtbMW18G1swOzM2bV9fX19ffA0KG1szN20gICAgICAgICAgICAgICAgIBtbMzZtfBtbMW06ICAbWzA7MzZtfCAgICAgICAgICAgICAgICAgICAgICAgICAgIHw6ICAbWzFtfBtbMDszNm0gICB8DQobWzM3bSAgICAgICAgICAgICAgICAgG1szNm18OjoufCAgICAgICAgICAgICAgICAgICAgICAgICAgIHw6Oi58Oi4gfA0KG1szN20gICAgICAgICAgICAgICAgIBtbMzZtYC0tLScgICAgICAgICAgICAgICAgICAgICAgICAgICBgLS0tIC0tLScNChtbMzdtDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAbWzE7MzZtUhtbMDszNm1pY2sbWzFtIFAbWzA7MzZtYXJyaXNoJ3MbWzM3bQ0KDQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAbWzM2bWYbWzFtVBtbMDszNm1lbG5ldBtbMW0NChtbMG0NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgG1szNm1odHRwczovL3d3dy4bWzFtZnRlbG5ldBtbMDszNm0uY2EbWzM3bQ0KDQogICAgICAgICAgICAgICAgICAgICAgG1szNm1tb2RpZiBieRtbMzdtICAbWzM2bTwgG1sxbS46G1swOzM2bSBQaGVub20gG1sxbTouG1swOzM2bSA+G1szN20NCg==";
+  //Options.SplashScreen = "QkJTSFVCIFsgYmJzaHViLm9yZyBdCg==";
+  Options.VirtualKeyboardVisible=false;
+  Options.ScreenRows = 25;
+  var fTelnet = new fTelnetClient('fTelnetContainer', Options);
+</script>
+<div id="MOBILESUP" style="display:none" style="position: absolute; bottom=0;">
+<input type="button" id="NOTESBTN" class="fTelnetCustomButton" onclick="toggleNotes()" value="Notes" onmouseover="fullScreenHoverIn(this)" ><input type="button" id="CONFIGBTN" class="fTelnetCustomButton" onclick="toggleConfig()" value="Settings" onmouseover="fullScreenHoverIn(this)"><input type="button" id="AUTOBIN" class="fTelnetCustomButton" onclick="toggleAutoRun()" value="AutoRun" style="color:#888889" onmouseover="fullScreenHoverIn(this)"><input type="button" id="ADDRESSBTN" class="fTelnetCustomButton" onclick="toggleAddress()" value="Address" style="color:#888888" onmouseover="fullScreenHoverIn(this)"><input type="button" id="OTPBTN" class="fTelnetCustomButton" onclick="toggleOTP()" value="OTP" style="color:#888888"  onmouseover="fullScreenHoverIn(this)"><input type="button" id="TERMSTYLE" class="fTelnetCustomButton" onclick="toggleTerminalStyle()" value="Style" style="color:#888888" onmouseover="fullScreenHoverIn(this)"> 
+</div>
+<div id="OTP" style="display:none">
+<br>OTP: <input id="input_SECRET" type="password" class="ConfigInput" size="16"> |- <span id="totp">0</span>
+<script>
+  function genTotp() {
+    var secret = secrGet();
+    var totp = new jsOTP.totp();
+    var code = totp.getOtp(secret); 
+    totp=document.getElementById('totp');
+    totp.innerText = code;
+  }
+</script>
+</div>
+<div id="ADDRESS" style="display:none">
+  <br>
+  <label>bbs://
+  <!-- <input type="search" list="BBS_LIST" id="input_SERVERNAME_CUSTOM" class="ConfigInput" name="serverNameCustom" value="Agency BBS (SSH)|agency.bbs.nz:2024|ssh" size="28" onchange="serverChange()"> -->
+  <input type="search" list="BBS_LIST" id="input_SERVERNAME_CUSTOM" class="ConfigInput" name="serverNameCustom" value="Agency BBS (SSH)|agency.bbs.nz:2024|ssh" size="28"> <!--  onchange="serverChange()"> -->
+  </label>:
+  <!--          <select id="SERVERNAME" class="ConfigInput" name="serverName" value="" size="40"> -->
+  <datalist id="BBS_LIST">
+<option value="">Custom... </option>
+<option value="A 80's Apple II BBS|a80sappleiibbs.ddns.net:6502">A 80's Apple II BBS</option>
+<option value="A 90's Manila BBS|bbs.balcos.net:23">A 90's Manila BBS</option>
+<option value="A2K4.com|a2k4.com:2300">A2K4.com</option>
+<option value="Absinthe BBS|absinthebbs.net:1940">Absinthe BBS</option>
+<option value="Acid Underworld|blackflag.acid.org:31337">Acid Underworld</option>
+<option value="Afterlife|afterlife.dynu.com:6400">Afterlife</option>
+<option value="Agency BBS|agency.bbs.nz:23">Agency BBS</option>
+<option value="AlcaBBS|bbs.alcatrash.org:23">AlcaBBS</option>
+<option value="Alcoholiday BBS|alco.bbs.io:23">Alcoholiday BBS</option>
+<option value="Aleco Experience BBS|bbs.alecoexp.cz:23">Aleco Experience BBS</option>
+<option value="Alien's Alcove|aliens.free.net.ph:23">Alien's Alcove</option>
+<option value="Alley Cat BBS|alleycat.synchro.net:23">Alley Cat BBS</option>
+<option value="Alpha Centauri BBS|acentauribbs.no-ip.org:2002">Alpha Centauri BBS</option>
+<option value="ALTERANT|alterant.leenooks.net:23">ALTERANT</option>
+<option value="Amiga City|amigacity.xyz:23">Amiga City</option>
+<option value="Amstrad BBS|amstrad.simulant.uk:464">Amstrad BBS</option>
+<option value="Analog Waffle|waffle.c4bmore.com:2001">Analog Waffle</option>
+<option value="AnonBBS|anonbbs.org:1337">AnonBBS</option>
+<option value="Another Droid BBS|andr01d.zapto.org:9999">Another Droid BBS</option>
+<option value="Another F-ing BBS|anotherbbs.dynu.net:23">Another F-ing BBS</option>
+<option value="Apernevan.tk BBS|apernevan.tk:23">Apernevan.tk BBS</option>
+<option value="Arcade|bbs.thearcadebbs.xyz:23">Arcade</option>
+<option value="Archaic Binary|bbs.archaicbinary.net:23">Archaic Binary</option>
+<option value="Arctic Zone BBS|bbs.arcticzonebbs.net:23">Arctic Zone BBS</option>
+<option value="Asylum|jbtek.mooo.com:2323">Asylum</option>
+<option value="AT2K Design BBS|bbs.at2k.org:23">AT2K Design BBS</option>
+<option value="Atavachron BBS|www.prova87.com:23">Atavachron BBS</option>
+<option value="Atrium BBS|atriumbbs.org:23">Atrium BBS</option>
+<option value="Back to the Future|bttfbbs.com:23">Back to the Future</option>
+<option value="Backwood Realm BBS|bwrbbs.ddns.net:23">Backwood Realm BBS</option>
+<option value="Ballon BBS|fusen.ddns.net:55223">Ballon BBS</option>
+<option value="Banana Bender BBS|bbs.retrohack.se:8484">Banana Bender BBS</option>
+<option value="Barringer BBS|bbs.barringer.org:23">Barringer BBS</option>
+<option value="Basement BBS|basementbbs.ddns.net:9000">Basement BBS</option>
+<option value="Basement Theory|basement.synchro.net:23">Basement Theory</option>
+<option value="Battlestar BBS|battlestarbbs.dyndns.org:23">Battlestar BBS</option>
+<option value="BBS MouseNet|bbs-mousenet.dynip.online:23">BBS MouseNet</option>
+<option value="BBSes.info|bbses.info:2323">BBSes.info</option>
+<option value="BCG-Box|bbbs.net:23">BCG-Box</option>
+<option value="BCR Games Server|bcrgames.com:31337">BCR Games Server</option>
+<option value="Bear's Den|bbs.bearfather.net:23">Bear's Den</option>
+<option value="Beavis & Butt-Head BBS|butthead.ddns.net:23">Beavis & Butt-Head BBS</option>
+<option value="Before the Web|btw.loybbs.net:23232">Before the Web</option>
+<option value="Bible BBS|bbs.mywire.org:2300">Bible BBS</option>
+<option value="Bit Bucket BBS|bbs.thebitbucket.ca:23">Bit Bucket BBS</option>
+<option value="Bit Sunrise|bitsunrise.com:23">Bit Sunrise</option>
+<option value="Bits & Bytes BBS|bbs.bnbbbs.net:2023">Bits & Bytes BBS</option>
+<option value="Black Flag|blackflag.acid.org:23">Black Flag</option>
+<option value="Black Sun BBS|blacksun.synchro.net:23">Black Sun BBS</option>
+<option value="Blackfair's Manor|blackf.synchro.net:23">Blackfair's Manor</option>
+<option value="BlackICE|blackice.bbsindex.de:23">BlackICE</option>
+<option value="Blood Stone|wwiv.bsbbs.com:2323">Blood Stone</option>
+<option value="Blue Northern Software BBS|bnsbbs.ddns.net:23000">Blue Northern Software BBS</option>
+<option value="Boink Machine|boinkmachine.ddns.net:23">Boink Machine</option>
+<option value="Borderline BBS|borderlinebbs.dyndns.org:6400">Borderline BBS</option>
+<option value="Bottomless Abyss BBS|bbs.bottomlessabyss.net:2023">Bottomless Abyss BBS</option>
+<option value="Box 24 BBS|bbs.box24.ch:23">Box 24 BBS</option>
+<option value="Brainsuxx.inc BBS|brainsuxxinc.ddns.net:23">Brainsuxx.inc BBS</option>
+<option value="BrainToys BBS|braintoys.org:23">BrainToys BBS</option>
+<option value="Brewery BBS|thebrewery.servebeer.com:6400">Brewery BBS</option>
+<option value="Bridge BBS|bridge.vkradio.com:23">Bridge BBS</option>
+<option value="Brotherhood of Groovyness|b-o-g.net:23">Brotherhood of Groovyness</option>
+<option value="ByteXchange BBS|bbs.thebytexchange.com:23">ByteXchange BBS</option>
+<option value="BZ & BZ BBS|bbs.red-green.com:23">BZ & BZ BBS</option>
+<option value="Capital Station BBS|csbbs.dyndns.org:23">Capital Station BBS</option>
+<option value="Capitol City Online BBS|capitolcityonline.net:23">Capitol City Online BBS</option>
+<option value="Capitol Shrill BBS|capitolshrill.com:23">Capitol Shrill BBS</option>
+<option value="Captain's Quarters|cqbbs.ddns.net:6502">Captain's Quarters</option>
+<option value="Castle Rock BBS (1)|casrock.com:23">Castle Rock BBS (1)</option>
+<option value="Castle Rock BBS (2)|cedarvalleybbs.com:2424">Castle Rock BBS (2)</option>
+<option value="Castle Rock BBS (3)|bbs.castlerockbbs.com:23">Castle Rock BBS (3)</option>
+<option value="Cave BBS|cavebbs.homeip.net:23">Cave BBS</option>
+<option value="CedarValley BBS|cedarvalleybbs.com:2525">CedarValley BBS</option>
+<option value="Celtic Broch BBS|tcb.synchronetbbs.org:23">Celtic Broch BBS</option>
+<option value="Central Ontario Remote|centralontarioremote.com:2323">Central Ontario Remote</option>
+<option value="Centronian BBS|bbs.centronian.ca:6400">Centronian BBS</option>
+<option value="Chaotic Bliss BBS|cbliss.synchro.net:23">Chaotic Bliss BBS</option>
+<option value="Chiva Town Social Hub|hub.chivanet.org:23">Chiva Town Social Hub</option>
+<option value="Christian Fellowship|cfbbs.no-ip.com:26">Christian Fellowship</option>
+<option value="CIA Amiga BBS|ciaamigabbs.dynu.net:6400">CIA Amiga BBS</option>
+<option value="Circle Of Protection|cop.bbbs.no:4000">Circle Of Protection</option>
+<option value="Cittadella BBS|bbs.cittadellabbs.it:4001">Cittadella BBS</option>
+<option value="ClassicMUD|bbs.classicmud.com:2323">ClassicMUD</option>
+<option value="Clockwork Orange BBS|cobbs.ddns.net:23">Clockwork Orange BBS</option>
+<option value="Clube da Insonia BBS|bbs.conf.eti.br:23">Clube da Insonia BBS</option>
+<option value="Clutch BBS|bbs.clutchbbs.com:23">Clutch BBS</option>
+<option value="Coco's BBS|cocosbbs.fsxnet.nz:50600">Coco's BBS</option>
+<option value="Code Red BBS|coderedbbs.dyndns.org:2323">Code Red BBS</option>
+<option value="Colorado Springs Central Net BBS|cscnet1.net:23">Colorado Springs Central Net BBS</option>
+<option value="Colossus BBS (1)|bbs.qzwx.com:23">Colossus BBS (1)</option>
+<option value="Colossus BBS (2)|bbs.excalibursheath.com:23">Colossus BBS (2)</option>
+<option value="Commodore Image|cib.dyndns.org:6400">Commodore Image</option>
+<option value="Commodore Image 2|cib.dyndns.org:6401">Commodore Image 2</option>
+<option value="Commodore Image 3|cib.dyndns.org:6402">Commodore Image 3</option>
+<option value="Commodore4ever BBS|commodore4everbbs.dynu.net:6400">Commodore4ever BBS</option>
+<option value="Computer Connection BBS|tccbbsjyo.toolman.net:23">Computer Connection BBS</option>
+<option value="Convolution BBS|convolution.us:23">Convolution BBS</option>
+<option value="Cosmik Debris BBS|cosmikdebris.ddns.net:2323">Cosmik Debris BBS</option>
+<option value="Cosmo's Castle|ccbbs.zapto.org:3143">Cosmo's Castle</option>
+<option value="Cottonwood BBS|cottonwoodbbs.dyndns.org:6502">Cottonwood BBS</option>
+<option value="Crafting For a Cure|craftingforacure.synchronetbbs.org:23">Crafting For a Cure</option>
+<option value="Crazy World BBS|crazyworldbbs.com:23">Crazy World BBS</option>
+<option value="Crystal Palace|cptalker.com:9900">Crystal Palace</option>
+<option value="Cube Dweller BBS|cubedwellerbbs.ddns.net:23">Cube Dweller BBS</option>
+<option value="Cyberia BBS (1)|cyberiabbs.zapto.org:23">Cyberia BBS (1)</option>
+<option value="Cyberia BBS (2)|sysgod.org:23000">Cyberia BBS (2)</option>
+<option value="CypherPunk (Digitilsoft)|cypherpunkbbs.net:23">CypherPunk (Digitilsoft)</option>
+<option value="Danger Bay BBS|dangerbaybbs.dyndns.org:1337">Danger Bay BBS</option>
+<option value="Dark Forces BBS|darkforces.synchronetbbs.org:23">Dark Forces BBS</option>
+<option value="Dark Realms|darkrealms.ca:23">Dark Realms</option>
+<option value="Darkscience BBS|bbs.darkscience.net:23">Darkscience BBS</option>
+<option value="DarkSide of The Moon|darkside.synchro.net:23">DarkSide of The Moon</option>
+<option value="Datanet BBS|datanetbbs.net:23">Datanet BBS</option>
+<option value="Dave's BBS|davesbbs.com:23">Dave's BBS</option>
+<option value="Dawn of Demise (1)|tdod.org:3000">Dawn of Demise (1)</option>
+<option value="Dawn of Demise (2)|tdod.org:5000">Dawn of Demise (2)</option>
+<option value="Days of Old BBS|daysofoldbbs.wilhartsolutions.com:23">Days of Old BBS</option>
+<option value="Dead Beatz|deadbeatz.org:23">Dead Beatz</option>
+<option value="Dead Zone|dzbbs.hopto.org:64128">Dead Zone</option>
+<option value="Deadline BBS|deadline.aegis-corp.org:1337">Deadline BBS</option>
+<option value="Death Gate BBS|sbbs.sytes.net:23">Death Gate BBS</option>
+<option value="Decker's Heaven BBS|bbs.deckersheaven.com:23">Decker's Heaven BBS</option>
+<option value="Delta City BBS|deltacity.se:23">Delta City BBS</option>
+<option value="Diamond Mine Online|bbs.dmine.net:24">Diamond Mine Online</option>
+<option value="Digicom BBS|dial.digicom.com:23">Digicom BBS</option>
+<option value="DigiSoft Club|digisoft.club:23">DigiSoft Club</option>
+<option value="Digital Aquarium|digiaqua.synchro.net:23">Digital Aquarium</option>
+<option value="Digital Distortion|digitaldistortionbbs.com:23">Digital Distortion</option>
+<option value="Digital Realms BBS|connect.digitalrealms.net:2323">Digital Realms BBS</option>
+<option value="DigitalDial-Sta#1|digitaldial.homeunix.com:2300">DigitalDial-Sta#1</option>
+<option value="Dinosaur Act|megalextoria.com:23">Dinosaur Act</option>
+<option value="Disconnected Reality|discreal.synchronetbbs.org:23">Disconnected Reality</option>
+<option value="Disksh0p! BBS|bbs.diskshop.ca:23">Disksh0p! BBS</option>
+<option value="Distortion|d1st.org:23">Distortion</option>
+<option value="DJ's Place|bbs.impakt.net:6502">DJ's Place</option>
+<option value="Doc's Place Online|bbs.docsplace.org:26">Doc's Place Online</option>
+<option value="Dock Sud|bbs.docksud.com.ar:23">Dock Sud</option>
+<option value="Dogtown BBS|bbs.kiwi.net:23">Dogtown BBS</option>
+<option value="Door Games Unlimited|dgu.strangled.net:23">Door Games Unlimited</option>
+<option value="DOSzombie BBS|bbs.doszombie.com:9000">DOSzombie BBS</option>
+<option value="DoveOnly BBS|casper.homeip.net:23">DoveOnly BBS</option>
+<option value="Dragon's Lair BBS|dragon.vk3heg.net:23">Dragon's Lair BBS</option>
+<option value="DragonsWeb Labs BBS|bbs.dragonsweb.org:23">DragonsWeb Labs BBS</option>
+<option value="Drakefire BBS|bbs.drakefire.com:23">Drakefire BBS</option>
+<option value="Dreamland BBS|bbs.dreamlandbbs.org:23">Dreamland BBS</option>
+<option value="Dungeon BBS|dungeon.barnabasmusic.com:23">Dungeon BBS</option>
+<option value="Dura-Europos|dura-bbs.net:6359">Dura-Europos</option>
+<option value="Echo Base BBS (1)|binkp.echo-base-bbs.com:23">Echo Base BBS (1)</option>
+<option value="Echo Base BBS (2)|www.eifelaktiv.de:23">Echo Base BBS (2)</option>
+<option value="Edge BBS|theedgebbs.dyndns.org:1541">Edge BBS</option>
+<option value="Efectolinux|bbs.efectolinux.com:23">Efectolinux</option>
+<option value="Eggy BBS|bbs.eggy.cc::2300">Eggy BBS</option>
+<option value="Eight Bit Boyz BBS|8bitboyz.bbs.io:6502">Eight Bit Boyz BBS</option>
+<option value="Electronic Chicken BBS|bbs.electronicchicken.com:23">Electronic Chicken BBS</option>
+<option value="Electronic Warfare BBS|bbs.ewbbs.net:23">Electronic Warfare BBS</option>
+<option value="Emcomm NY|emcommny.synchro.net:23">Emcomm NY</option>
+<option value="Emerald Hill BBS|bbs.emeraldhill.org:23">Emerald Hill BBS</option>
+<option value="Emergency Scene|bbs.emergencyscene.net:2475">Emergency Scene</option>
+<option value="Empire of the Dragon BBS|bbs.eotd.com:23">Empire of the Dragon BBS</option>
+<option value="End Of The Line BBS|endofthelinebbs.com:23">End Of The Line BBS</option>
+<option value="ERICADE Network|the.ericade.net:23">ERICADE Network</option>
+<option value="Error 1202 BBS|error1202bbs.ddns.net:1202">Error 1202 BBS</option>
+<option value="Error 404 BBS|error404bbs.ddns.net:404">Error 404 BBS</option>
+<option value="Escape To Other Worlds|etow.com:23">Escape To Other Worlds</option>
+<option value="Excaliber|members.excaliber.club:23">Excaliber</option>
+<option value="Eye of the Beholder|fido.beholderbbs.org:23">Eye of the Beholder</option>
+<option value="Fading Black BBS|fadingblack.net:23">Fading Black BBS</option>
+<option value="Falcon BBS|bbs.falconbbs.nl:23">Falcon BBS</option>
+<option value="Fantastic World BBS|18.208.221.1:23">Fantastic World BBS</option>
+<option value="Fatcats BBS|fatcatsbbs.com:23">Fatcats BBS</option>
+<option value="Files 4 Fun BBS|bbs.f4fbbs.com:62323">Files 4 Fun BBS</option>
+<option value="Fireball Express BBS|fireballex.com:23">Fireball Express BBS</option>
+<option value="First (1st) Choice Core|1stchoicecore.co.nz:23">First (1st) Choice Core</option>
+<option value="FishingNET BBS|fishingnet.phatstar.org:7777">FishingNET BBS</option>
+<option value="Flashback BBS|flashbackbbs.sytes.net:6502">Flashback BBS</option>
+<option value="FleetHQ BBS|www.fleethq.org:23">FleetHQ BBS</option>
+<option value="Flower BBS|34.246.105.68:23">Flower BBS</option>
+<option value="Flower BBS WA|flower.sytes.net:31337">Flower BBS WA</option>
+<option value="FlupH BBS|fluph.zapto.org:23">FlupH BBS</option>
+<option value="Fluxpod Info Service|fix.no:24">Fluxpod Info Service</option>
+<option value="Fone Company|tfcbbs.com:6400">Fone Company</option>
+<option value="Force9 BBS|bbs.force9.org:23">Force9 BBS</option>
+<option value="Forever BBS|majormud.us:23">Forever BBS</option>
+<option value="Freeside BBS|freeside.bbs.io:23">Freeside BBS</option>
+<option value="Freeway BBS|freeway.vkradio.com:23">Freeway BBS</option>
+<option value="Frozen Floppy BBS|bbs.retrohack.se:6464">Frozen Floppy BBS</option>
+<option value="Frugal Computing BBS|frugalbbs.com:23">Frugal Computing BBS</option>
+<option value="Funknown BBS|fubbs.ddns.net:23">Funknown BBS</option>
+<option value="Fusion BBS|fusionbbs.ddns.net:9640">Fusion BBS</option>
+<option value="Future World II|fw2.cnetbbs.net:6800">Future World II</option>
+<option value="GameBanshee BBS|www.gamebansheebbs.com:23">GameBanshee BBS</option>
+<option value="GameMaster's Realm BBS|gamemastersrealm.com:23">GameMaster's Realm BBS</option>
+<option value="GAP Prison Board|gapbbs.rdfig.net:4040">GAP Prison Board</option>
+<option value="Gate BBS|thegatebbs.sytes.net:666">Gate BBS</option>
+<option value="Gate BBS II|thegateb.synchro.net:23">Gate BBS II</option>
+<option value="Guardian of Forever|guardian.synchro.net:23">Guardian of Forever</option>
+<option value="Haciend|haciend.bbs.fi:23">Haciend</option>
+<option value="Hard Drive Cafe|hdcbbs.com:23">Hard Drive Cafe</option>
+<option value="Hated Reality|hatedreality.homeunix.net:23">Hated Reality</option>
+<option value="Havens BBS|havens.synchronetbbs.org:23">Havens BBS</option>
+<option value="Hawaii BBS Atari 8 Bit|atari-bbs.zapto.org:8888">Hawaii BBS Atari 8 Bit</option>
+<option value="Haxor's Palace|telnet.unknownrealm.org:23">Haxor's Palace</option>
+<option value="Heatwave|heatwave.ddns.net:9640">Heatwave</option>
+<option value="Heights BBS|heightsbbs.heightspc.net:6860">Heights BBS</option>
+<option value="Herbies-BBS|herbies-bbs.ddns.net:2323">Herbies-BBS</option>
+<option value="Herbies-BBS II|herbies-bbs.ddns.net:23">Herbies-BBS II</option>
+<option value="Hidden Paradise BBS|hpbbs.dyndns.org:23">Hidden Paradise BBS</option>
+<option value="High Desert BBS|highdesertbbs.ddns.net:6400">High Desert BBS</option>
+<option value="HispaMSX BBS|bbs.hispamsx.org:23">HispaMSX BBS</option>
+<option value="Horizon BBS|bbs.horizonbbs.net:23">Horizon BBS</option>
+<option value="HoyVision Hotline BBS (13th Floor 1987)|13th.hoyvision.com:6402">HoyVision Hotline BBS (13th Floor 1987)</option>
+<option value="Humongous BBS|jenandcal.familyds.org:2323">Humongous BBS</option>
+<option value="Hysteria BBS|hysteriabbs.com:23">Hysteria BBS</option>
+<option value="Ignition BBS|ignitionbbs.com:23">Ignition BBS</option>
+<option value="Inara BBS|bbs.inarabbs.com:23">Inara BBS</option>
+<option value="Infoline|83.167.228.107:1998|ssh">Infoline</option>
+<option value="Ink Two|bbs.inktwo.com:23">Ink Two</option>
+<option value="Inland Utopia BBS|utopiabbs.zapto.org:2323">Inland Utopia BBS</option>
+<option value="Insane Asylum BBS|tiabbs.synchro.net:23">Insane Asylum BBS</option>
+<option value="InterLinked|bbs.interlinked.cf:23">InterLinked</option>
+<option value="Internal Affairs|internalaffairsbbs.com:23">Internal Affairs</option>
+<option value="Iowa Student Assc. BBS (ISCA)|bbs.iscabbs.com:23">Iowa Student Assc. BBS (ISCA)</option>
+<option value="ISIS Unveiled|isisunveiled.no-ip.org:23">ISIS Unveiled</option>
+<option value="ITC (The Integrated Telecommunications Centre)|itcbbs.ddns.net:23000">ITC (The Integrated Telecommunications Centre)</option>
+<option value="JumpStart BBS|www.exciter.ws:23">JumpStart BBS</option>
+<option value="KD3net|bbs.kd3.us:23">KD3net</option>
+<option value="Keep BBS|thekeep.net:23">Keep BBS</option>
+<option value="KernelError Networks BBS|bbs.kernelerror.com:10023">KernelError Networks BBS</option>
+<option value="Killing Ground|bbs.zeusdev.co.uk:23">Killing Ground</option>
+<option value="KOFO BBS|fido2.kofobbs.net:23">KOFO BBS</option>
+<option value="Kraaby Gamer BBS|kraaby.synchro.net:2323">Kraaby Gamer BBS</option>
+<option value="Kuehlbox|kuehlbox.wtf:23">Kuehlbox</option>
+<option value="Legends of Yesteryear|loybbs.net:23322">Legends of Yesteryear</option>
+<option value="Leisure Time BBS|bbs.riddells.net:10023">Leisure Time BBS</option>
+<option value="Level 29|bbs.fozztexx.com:23">Level 29</option>
+<option value="Liane BBS|bbs.vslib.cz:23">Liane BBS</option>
+<option value="Lightning BBS (Mystic)|lightningbbs.com:2400">Lightning BBS (Mystic)</option>
+<option value="Linux Inside BBS|linuxinsidebbs.com:23">Linux Inside BBS</option>
+<option value="Local Yocal|localyocalbbs.com:23">Local Yocal</option>
+<option value="Loki's Den BBS|lokisdenbbs.com:23">Loki's Den BBS</option>
+<option value="Lord.stabs.org|lord.stabs.org:23">Lord.stabs.org</option>
+<option value="Lost Cause Halfway House|bbs.lostcause.house:23">Lost Cause Halfway House</option>
+<option value="Lost Gonzo BBS|lostgonzo.synchronetbbs.org:23">Lost Gonzo BBS</option>
+<option value="Lostways BBS|99.73.141.110:23">Lostways BBS</option>
+<option value="Lower Planes, The|tlp.zapto.org:23">Lower Planes, The</option>
+<option value="LV-426 BBS|lv426bbs.hopto.org:6464">LV-426 BBS</option>
+<option value="M. Station|mstation.servebbs.com:23">M. Station</option>
+<option value="Manic Modem BBS|telnet.manic-modem.com:23">Manic Modem BBS</option>
+<option value="MASH 4077 BBS|mash4077.ddns.net:23">MASH 4077 BBS</option>
+<option value="MasterCom|masterco.synchro.net:23">MasterCom</option>
+<option value="MegaBBS|mbbs1.ddns.net:23">MegaBBS</option>
+<option value="MemphisTW|bbs.memphistw.org:23">MemphisTW</option>
+<option value="Mental Meltdown BBS|mentalmeltdown.us:23">Mental Meltdown BBS</option>
+<option value="Metal Zone|tmzbbs01.synchro.net:23">Metal Zone</option>
+<option value="Metallic Dreams|bbs.metallic-dreams.com:23">Metallic Dreams</option>
+<option value="Metro Olografix|bbs.olografix.org:23">Metro Olografix</option>
+<option value="MGI314 BBS|bbs.sternadel.pl:23">MGI314 BBS</option>
+<option value="Mike's Mansion|fluxcap.synchro.net:2323">Mike's Mansion</option>
+<option value="Ministry of Silly MUDS|ministrybbs.com:23">Ministry of Silly MUDS</option>
+<option value="Missing Links|bbs.mlinks.com:23">Missing Links</option>
+<option value="MMN|bbs.ec.je:23">MMN</option>
+<option value="Moderate Chaos BBS|bbs.moderatechaos.com:2323">Moderate Chaos BBS</option>
+<option value="Moe's Tavern|moetiki.ddns.net:27">Moe's Tavern</option>
+<option value="Mojo's World BBS|mojo.synchro.net:23">Mojo's World BBS</option>
+<option value="Momia BBS|momiabbs.no-ip.info:2323">Momia BBS</option>
+<option value="Monochrome|mono.org:23">Monochrome</option>
+<option value="Moon Base Alpha|mba.dnsalias.com:23">Moon Base Alpha</option>
+<option value="Mozy's Swamp and Red Dwarf BBS|bbs.mozysswamp.org:23">Mozy's Swamp and Red Dwarf BBS</option>
+<option value="MtlGeek|mtlgeek.synchro.net:23">MtlGeek</option>
+<option value="Music Station|bbs.bsrealm.net:23">Music Station</option>
+<option value="Mutiny BBS|mutinybbs.com:2332">Mutiny BBS</option>
+<option value="Mysteria Majicka|majicka.at2k.org:23">Mysteria Majicka</option>
+<option value="Mystic Dreams|mysticdreams.dyndns.org:24">Mystic Dreams</option>
+<option value="Mystic Dungeon BBS|mysticdungeon.club:1666">Mystic Dungeon BBS</option>
+<option value="Mystic Island BBS|mysticisland.strangled.net:23">Mystic Island BBS</option>
+<option value="Mystic PI BBS|bcw142.zapto.org:23">Mystic PI BBS</option>
+<option value="Mystic Prison Board BBS|pbmystic.rdfig.net:24">Mystic Prison Board BBS</option>
+<option value="Mystic Rhythms BBS|mystic.wwivbbs.org:23">Mystic Rhythms BBS</option>
+<option value="N3HYM Amateur Radio BBS|n3hym.ddns.net:8010">N3HYM Amateur Radio BBS</option>
+<option value="Necronomicon BBS|necrobbs.strangled.net:23">Necronomicon BBS</option>
+<option value="Necronomicon BBS (CNet)|necrobbs.strangled.net:40">Necronomicon BBS (CNet)</option>
+<option value="Necropolis|necrobbs.com:23">Necropolis</option>
+<option value="Neo-Vintage BBS|bbs.delorted.com:23">Neo-Vintage BBS</option>
+<option value="Net247|net247.io:23">Net247</option>
+<option value="Netvillage|netvillage.com:23">Netvillage</option>
+<option value="Network 23|network23.ch:23">Network 23</option>
+<option value="Never Never Land|neverneverlandbbs.com:23">Never Never Land</option>
+<option value="Newton City BBS|bbs.newtoncity.org:23">Newton City BBS</option>
+<option value="Ninety-Six Forty 9640 News BBS|9640news.ddns.net:9640:23">Ninety-Six Forty 9640 News BBS</option>
+<option value="Ninho do Abutre 2 BBS|abutre.no-ip.org:2323">Ninho do Abutre 2 BBS</option>
+<option value="Nocturnal BBS|nocturnal.hopto.org:2023">Nocturnal BBS</option>
+<option value="Nola Carrier|nolacarrier.com:504">Nola Carrier</option>
+<option value="Nuclear Club|nuke.club:23">Nuclear Club</option>
+<option value="Nut Asylum (XTCBOX)|xtcbox.org:2323">Nut Asylum (XTCBOX)</option>
+<option value="Old Mill BBS|theoldmillbbs.net:23">Old Mill BBS</option>
+<option value="Old Time's Sake BBS|konchoulias.no-ip.org:2323">Old Time's Sake BBS</option>
+<option value="Onix BBS|onixbbs.servebbs.com:23">Onix BBS</option>
+<option value="Online BBS|online-bbs.selfhost.bz:23">Online BBS</option>
+<option value="Orbit BBS|orbitbbs.ddns.net:7210">Orbit BBS</option>
+<option value="Orchestra BBS|sacrebase.servebbs.net:486">Orchestra BBS</option>
+<option value="Orlando BBS|orlando.darcangelis.net:23">Orlando BBS</option>
+<option value="OuijaBoard BBS (1)|bbs2.ouijabrd.net:23">OuijaBoard BBS (1)</option>
+<option value="OuijaBoard BBS (2)|ftn.region14.org:23">OuijaBoard BBS (2)</option>
+<option value="Outer Limits BBS|outerlimitsbbs.ddns.net:8000">Outer Limits BBS</option>
+<option value="Outpost BBS|bbs.outpostbbs.net:2303">Outpost BBS</option>
+<option value="Outwest BBS|outwestbbs.com:23">Outwest BBS</option>
+<option value="Paladin's Castle|paladin-castlebbs.mynetgear.com:2323">Paladin's Castle</option>
+<option value="Palantir BBS|palantirbbs.ddns.net:23">Palantir BBS</option>
+<option value="Paradox BBS|paradox.farted.net:23">Paradox BBS</option>
+<option value="Parity Error BBS|theparityerror.com:23">Parity Error BBS</option>
+<option value="Part-Time BBS|ptbbs.ddns.net:8000">Part-Time BBS</option>
+<option value="Particles! BBS|particlesbbs.dyndns.org:6400">Particles! BBS</option>
+<option value="PB PCBoard BBS|pbmystic.rdfig.net:1023">PB PCBoard BBS</option>
+<option value="PBNET BBS|pufa.pbnet.ro:23">PBNET BBS</option>
+<option value="Penalty Box|pbox.no-ip.org:23">Penalty Box</option>
+<option value="Pepzi BBS|pepzi.eu:23">Pepzi BBS</option>
+<option value="Phantasm|phantasm.bbs.io:4489">Phantasm</option>
+<option value="Pharcyde|bbs.pharcyde.org:23">Pharcyde</option>
+<option value="Phoenix BBS|phoenix.bnbbbs.net:2323">Phoenix BBS</option>
+<option value="Phospher BBS|bbs.phospher.com:23">Phospher BBS</option>
+<option value="Phunc BBS|bbs.phunc.com:23">Phunc BBS</option>
+<option value="Pie33|pie33.com:2223">Pie33</option>
+<option value="Pipeline BBS|bbs.wantit.net:23">Pipeline BBS</option>
+<option value="Pirate's Cove|picovebbs.com:6860">Pirate's Cove</option>
+<option value="Planet Afro BBS|cetialphafive.com:8888">Planet Afro BBS</option>
+<option value="Possum Lodge South BBS|capitolcityonline.net:7636">Possum Lodge South BBS</option>
+<option value="Prism BBS|filegate.net:2030">Prism BBS</option>
+<option value="Prison Board|rdfig.net:23">Prison Board</option>
+<option value="Prisoner's Game Lounge|gapbbs.rdfig.net:23">Prisoner's Game Lounge</option>
+<option value="Pro Audio Tech BBS|www.proaudiotech.net:23">Pro Audio Tech BBS</option>
+<option value="Pro-Kegs|proline.ksherlock.com:6523">Pro-Kegs</option>
+<option value="Psychosis BBS|psychosisbbs.ddns.net:2323">Psychosis BBS</option>
+<option value="PTT Bulletin Board System (1)|ptt.cc:23">PTT Bulletin Board System (1)</option>
+<option value="PTT Bulletin Board System (2)|ptt2.cc:23">PTT Bulletin Board System (2)</option>
+<option value="Puma BBS|pumabbs.dynu.net:23">Puma BBS</option>
+<option value="Pyffle HQ|hq.pyffle.com:23">Pyffle HQ</option>
+<option value="QRP.gr BBS|qrp.gr:23">QRP.gr BBS</option>
+<option value="Quantum Wormhole|bbs.erb.pw:23">Quantum Wormhole</option>
+<option value="Quazar BBS Door Game Server|quazarbbs.dynu.net:2323">Quazar BBS Door Game Server</option>
+<option value="Queen's Kingdom BBS|queenskingdom.ddns.net:39">Queen's Kingdom BBS</option>
+<option value="RapidFire|rapidfire.hopto.org:64128">RapidFire</option>
+<option value="Razor's Domain 3.141592|bbs.razorsdomain.com:31415">Razor's Domain 3.141592</option>
+<option value="Razor's Domain/2|bbs.razorsdomain.com:23230">Razor's Domain/2</option>
+<option value="Razz Pie BBS|razzpie.ddns.net:2300">Razz Pie BBS</option>
+<option value="RBB Systems Int'l|rbb.bbs.fi:32">RBB Systems Int'l</option>
+<option value="Realitycheck BBS|realitycheckbbs.org:23">Realitycheck BBS</option>
+<option value="Realm of Darkness|www.trod.org:23">Realm of Darkness</option>
+<option value="Realm of Serion|connect.serionbbs.com:23">Realm of Serion</option>
+<option value="Region 15 HQ|region15.net:23">Region 15 HQ</option>
+<option value="Reign Of Fire BBS|rofbbs.ddns.net:2300">Reign Of Fire BBS</option>
+<option value="Resistance Pride|resistancepride.sytes.net:23">Resistance Pride</option>
+<option value="Retro Underground BBS|retrounderground.org:1337">Retro Underground BBS</option>
+<option value="RetroBBS|retrobbs.rocksolidbbs.com:23">RetroBBS</option>
+<option value="RetroDigital BBS|rdnetbbs.com:23">RetroDigital BBS</option>
+<option value="RMAC Diversi-Dial Station #34|rmac.d-dial.com:23">RMAC Diversi-Dial Station #34</option>
+<option value="RMSBBS|rmsbbs.ddns.net:23">RMSBBS</option>
+<option value="RSR Trip Radio|rsr.synchro.net:23">RSR Trip Radio</option>
+<option value="Sagramour's Realm|sagramoursrealm.zapto.org:23">Sagramour's Realm</option>
+<option value="Sanctuary BBS|sanctuary.zapto.org:1541">Sanctuary BBS</option>
+<option value="Sanctum II BBS (1)|telnet.sanctumbbs.com:23">Sanctum II BBS (1)</option>
+<option value="Sanctum II BBS (2)|sanctumbbs.com:6502">Sanctum II BBS (2)</option>
+<option value="Sandnes BBS|stokmarknes.org:24">Sandnes BBS</option>
+<option value="Sands of Time|162.243.54.214:23">Sands of Time</option>
+<option value="Sanitarium BBS|telnet.wallofhate.com:23">Sanitarium BBS</option>
+<option value="Santronics Software|online.winserver.com:23">Santronics Software</option>
+<option value="Saturn's Orbit|saturnsorbit.hopto.org:23">Saturn's Orbit</option>
+<option value="Sbbs.dynu.net|sbbs.dynu.net:2025">Sbbs.dynu.net</option>
+<option value="Scratched Reality|reality.throwbackbbs.com:2323">Scratched Reality</option>
+<option value="SD2IEC Test BBS|cib.dyndns.org:6403">SD2IEC Test BBS</option>
+<option value="Seattle Community Network|scn.org:23">Seattle Community Network</option>
+<option value="Second (2nd) Choice Core|2ndchoicecore.ddns.net:1024">Second (2nd) Choice Core</option>
+<option value="Second Coming BBS|scbbs.ddns.net:6400">Second Coming BBS</option>
+<option value="Seventy-Nine (79) Columns|oddnetwork.org:23">Seventy-Nine (79) Columns</option>
+<option value="Shadow Realm BBS|shadowrealmbbs.com:23">Shadow Realm BBS</option>
+<option value="Shadowscope|bbs.shadowscope.com:23">Shadowscope</option>
+<option value="Shakey BBS|shakeybbs.com:23">Shakey BBS</option>
+<option value="Shenk's Express|shenks.synchro.net:23">Shenk's Express</option>
+<option value="Shodan's Core|shodan.synchro.net:23">Shodan's Core</option>
+<option value="Silicon Underground|siliconu.com:23">Silicon Underground</option>
+<option value="SilverHawk BBS|bbs.silverhawk.me:6400">SilverHawk BBS</option>
+<option value="Sinclair Retro BBS|retrobbs.sinclair.homepc.it:23">Sinclair Retro BBS</option>
+<option value="Sinner's Haven II|bbs.sinnershaven.com:23">Sinner's Haven II</option>
+<option value="Sixty-Four Vintage BBS|64vintageremixbbs.dyndns.org:6400">Sixty-Four Vintage BBS</option>
+<option value="Skynet BBS|skynetbbs.dynu.net:6400">Skynet BBS</option>
+<option value="Skynet Gaming BBS|skynetgaming.com:23">Skynet Gaming BBS</option>
+<option value="Slasho.me BBS|slasho.me:23">Slasho.me BBS</option>
+<option value="Slime City BBS|bbs.retrohack.se:23">Slime City BBS</option>
+<option value="Sloane BBS|sloanebbs.com:2323">Sloane BBS</option>
+<option value="SmokyThing BBS|inflecto.org:23">SmokyThing BBS</option>
+<option value="Sonic BBS|sonicbbs.ddns.net:23">Sonic BBS</option>
+<option value="Space Odyssey|bbs.sobbs.org:23">Space Odyssey</option>
+<option value="SpaceSST BBS|mccarragher.org:23">SpaceSST BBS</option>
+<option value="Spiffwiggler BBS|spiffwig.synchro.net:23">Spiffwiggler BBS</option>
+<option value="Starbase 21|bbs.starbase21.net:23">Starbase 21</option>
+<option value="Starbase Discovery|sb-discovery.com:23">Starbase Discovery</option>
+<option value="Stormies BBS|stormie.synchro.net:23">Stormies BBS</option>
+<option value="Strontium 90 BBS|strontium90.servebbs.com:9000">Strontium 90 BBS</option>
+<option value="Subcarrier BBS|subcarrier.ignorelist.com:2323">Subcarrier BBS</option>
+<option value="Super Dimension Fortress (SDF-1)|sdf.lonestar.org:23">Super Dimension Fortress (SDF-1)</option>
+<option value="Sursum Corda! BBS|bbs.sursum-corda.com:23">Sursum Corda! BBS</option>
+<option value="Swords of Chaos Forever BBS|bbs.soc4ever.com:23">Swords of Chaos Forever BBS</option>
+<option value="Synchronix|freebsd.synchro.net:23">Synchronix</option>
+<option value="System One BBS|systemone.ddns.net:6400">System One BBS</option>
+<option value="T311net BBS|t311net.ddns.net:2323">T311net BBS</option>
+<option value="Tardis BBS|bbs.cortex-media.info:23">Tardis BBS</option>
+<option value="Techienet BBS|bbs.techienet.com:23">Techienet BBS</option>
+<option value="Technician's Hangout BBS|technicianshangout.ddns.net:23">Technician's Hangout BBS</option>
+<option value="Techware|bbs.techware2k.com:23">Techware</option>
+<option value="Telegard Prison Board|wcalt.rdfig.net:23">Telegard Prison Board</option>
+<option value="Telehack|telehack.com:23">Telehack</option>
+<option value="Temple of Doom|tod.eothnet.com:23">Temple of Doom</option>
+<option value="The Rock BBS III|therockbbs.net:10023">The Rock BBS III</option>
+<option value="Third (3rd) Choice Core BBS|3rdchoicecore.ddns.net:1022">Third (3rd) Choice Core BBS</option>
+<option value="Thirteenth (13th) Floor BBS|bbs.hoyvision.com:23">Thirteenth (13th) Floor BBS</option>
+<option value="Thirteenth (13th) Floor BBS: C64 Version [Node 1]|13th.hoyvision.com:6400">Thirteenth (13th) Floor BBS: C64 Version [Node 1]</option>
+<option value="Thirteenth (13th) Floor BBS: C64 Version [Node 2]|bbs.hoyvision.com:6400">Thirteenth (13th) Floor BBS: C64 Version [Node 2]</option>
+<option value="Thirteenth (13th) Leader BBS|13leader.net:8023">Thirteenth (13th) Leader BBS</option>
+<option value="This Old Cabin BBS|bbs.thisoldcabin.net:2323">This Old Cabin BBS</option>
+<option value="Three Hundred (300) F-ing Baud BBS|300baud.dynu.net:2525">Three Hundred (300) F-ing Baud BBS</option>
+<option value="Throwback BBS|bbs.throwbackbbs.com:23">Throwback BBS</option>
+<option value="Thunderbolt BBS|tbolt.synchro.net:23">Thunderbolt BBS</option>
+<option value="Time Warp of Future|time.synchro.net:24">Time Warp of Future</option>
+<option value="Tiny's BBS (1)|tinysbbs.com:3023">Tiny's BBS (1)</option>
+<option value="Titan at Redhill|redhill.net.nz:23">Titan at Redhill</option>
+<option value="Titan's Orbit BBS|titansorbit.ddns.net:23">Titan's Orbit BBS</option>
+<option value="Tommy's Holiday Camp|vintage.thcbbs.com:23">Tommy's Holiday Camp</option>
+<option value="Tornado Electronic Communications System|bbs.tecs.de:23">Tornado Electronic Communications System</option>
+<option value="Totallynerd BBS|totallynerd.com:23">Totallynerd BBS</option>
+<option value="Tower of High Sorcery|tohs.hopto.org:23">Tower of High Sorcery</option>
+<option value="Toxic Laboratory|toxicbbs.com:23">Toxic Laboratory</option>
+<option value="Trashcan BBS|bbs.thenet.gen.nz:2324">Trashcan BBS</option>
+<option value="Troy's Den|troybbs.com:23">Troy's Den</option>
+<option value="Twisted Balloon|twisted-balloon.org:23">Twisted Balloon</option>
+<option value="Two Dudes BBS|twodudesbbs.com:23">Two Dudes BBS</option>
+<option value="Uncensored!|uncensored.citadel.org:23">Uncensored!</option>
+<option value="Undercurrents BBS (Enigma)|undercurrents.io:8088">Undercurrents BBS (Enigma)</option>
+<option value="Undercurrents BBS (Synchronet)|uc.synchronetbbs.org:23">Undercurrents BBS (Synchronet)</option>
+<option value="Unicyber BBS|bbs.unicyber.co.uk:2323">Unicyber BBS</option>
+<option value="Universal Joint BBS|bbs.ujoint.org:23">Universal Joint BBS</option>
+<option value="Unknown BBS|tubbs.synchro.net:23">Unknown BBS</option>
+<option value="Unleashed BBS|dns.unleashedinet.org:23">Unleashed BBS</option>
+<option value="US 99 BBS|bbs.quinnnet.org:23">US 99 BBS</option>
+<option value="UserClub BBS|userclub-bbs.com:23">UserClub BBS</option>
+<option value="VA7AQD's Tavern|bbs.isurf.ca:23">VA7AQD's Tavern</option>
+<option value="VADV Prison Board BBS|rdfig.net:2812">VADV Prison Board BBS</option>
+<option value="Vague BBS|47.203.188.116:23">Vague BBS</option>
+<option value="Valhalla Home Services (1)|bbs.valhallahomeservices.com:23">Valhalla Home Services (1)</option>
+<option value="Valhalla Home Services (2)|bbs.valhallahomeservices.com:24">Valhalla Home Services (2)</option>
+<option value="Valley BBS|valleybbs.com:23">Valley BBS</option>
+<option value="Veilnet|veilnet.cf:23">Veilnet</option>
+<option value="Veleno BBS|telnet.velenobbs.net:23">Veleno BBS</option>
+<option value="Vengeance BBS|vengeance.dynu.com:1337">Vengeance BBS</option>
+<option value="Vertrauen|vert.synchro.net:23">Vertrauen</option>
+<option value="Veteran BBS|bbs.thewelborns.net:28">Veteran BBS</option>
+<option value="Virtualaltair.com Remote CP/M|altair.virtualaltair.com:4667">Virtualaltair.com Remote CP/M</option>
+<option value="Vista BBS|vistabbs.ianthurston.com:2323">Vista BBS</option>
+<option value="Void BBS|voidbbs.com:23">Void BBS</option>
+<option value="W4BFB|packet.w4bfb.org:2333">W4BFB</option>
+<option value="WABAC Machine BBS|wabac.ccsnet.com:23">WABAC Machine BBS</option>
+<option value="War Ensemble BBS|warensemble.com:23">War Ensemble BBS</option>
+<option value="Wastelands BBS|wastelands-bbs.net:23">Wastelands BBS</option>
+<option value="Weather Station BBS|bbs.weather-station.org:23">Weather Station BBS</option>
+<option value="Whisky Lover's Amateur Radio BBS|wd1cks.org:23">Whisky Lover's Amateur Radio BBS</option>
+<option value="Wildcat's Castle BBS|bbs.wccastle.net:2424">Wildcat's Castle BBS</option>
+<option value="Willow Creek BBS|willowcreekbbs.dynu.net:6400">Willow Creek BBS</option>
+<option value="Wintermute BBS|wintermute.spdns.eu:23">Wintermute BBS</option>
+<option value="Wizard's Castle|wccastle.synchro.net:24">Wizard's Castle</option>
+<option value="Wretched Beagle BBS|bbs.wretchedbeagle.com:23">Wretched Beagle BBS</option>
+<option value="Wrong Number ][ BBS|wn2.duckdns.org:23">Wrong Number ][ BBS</option>
+<option value="Wrong Number ][ V1.2b|cib.dyndns.org:6404">Wrong Number ][ V1.2b</option>
+<option value="Wrong Number ][ V2.0|cib.dyndns.org:6405">Wrong Number ][ V2.0</option>
+<option value="Wrong Number ]I[ BBS|wn2.duckdns.org:6400">Wrong Number ]I[ BBS</option>
+<option value="Wrong Number IV BBS|wn2.duckdns.org:3000">Wrong Number IV BBS</option>
+<option value="Wrong Number V BBS|wn2.duckdns.org:6408">Wrong Number V BBS</option>
+<option value="X-Caliber BBS|bbs.aholix.net:6800">X-Caliber BBS</option>
+<option value="Xibalba|xibalba.l33t.codes:44510">Xibalba</option>
+<option value="Zenolab|zenolab.synchro.net:23">Zenolab</option>
+<option value="Zone BBS|zonebbs.net:23">Zone BBS</option>
+<option value="Agency BBS (SSH)|agency.bbs.nz:2024|ssh">Agency BBS (SSH)</option>
+<option value="Amiga City (SSH)|amigacity.xyz:3459|ssh">Amiga City (SSH)</option>
+<option value="Amstrad BBS (SSH)|amstrad.simulant.uk:6128|ssh">Amstrad BBS (SSH)</option>
+<option value="Another Droid BBS (SSH)|andr01d.zapto.org:8888|ssh">Another Droid BBS (SSH)</option>
+<option value="Anima Ex Machina (SSH)|animaexmachina.sytes.net:6022|ssh">Anima Ex Machina (SSH)</option>
+<option value="Archaic Binary (SSH)|bbs.archaicbinary.net:22|ssh">Archaic Binary (SSH)</option>
+<option value="Back to the Future (SSH)|bttfbbs.com:22|ssh">Back to the Future (SSH)</option>
+<option value="Ballon BBS (SSH)|fusen.ddns.net:55222|ssh">Ballon BBS (SSH)</option>
+<option value="Basement Theory (SSH)|basement.synchro.net:2222|ssh">Basement Theory (SSH)</option>
+<option value="Blood Stone (SSH)|wwiv.bsbbs.com:22|ssh">Blood Stone (SSH)</option>
+<option value="Bottomless Abyss BBS (SSH)|bbs.bottomlessabyss.net:2222|ssh">Bottomless Abyss BBS (SSH)</option>
+<option value="ByteXchange BBS (SSH)|bbs.thebytexchange.com:22|ssh">ByteXchange BBS (SSH)</option>
+<option value="Capitol Shrill BBS (SSH)|capitolshrill.com:22|ssh">Capitol Shrill BBS (SSH)</option>
+<option value="DigiSoft Club (SSH)|digisoft.club:22|ssh">DigiSoft Club (SSH)</option>
+<option value="Disksh0p! BBS (SSH)|bbs.diskshop.ca:22|ssh">Disksh0p! BBS (SSH)</option>
+<option value="Dreamland BBS (SSH)|bbs.dreamlandbbs.org:22|ssh">Dreamland BBS (SSH)</option>
+<option value="Emcomm NY (SSH)|emcommny.synchro.net:22|ssh">Emcomm NY (SSH)</option>
+<option value="End Of The Line BBS (SSH)|endofthelinebbs.com:22|ssh">End Of The Line BBS (SSH)</option>
+<option value="Insane Asylum BBS (SSH)|tiabbs.synchro.net:22|ssh">Insane Asylum BBS (SSH)</option>
+<option value="InterLinked (SSH)|bbs.interlinked.cf:22|ssh">InterLinked (SSH)</option>
+<option value="KD3net (SSH)|bbs.kd3.us:22|ssh">KD3net (SSH)</option>
+<option value="Lightning BBS (Mystic) (SSH)|lightningbbs.com:2422|ssh">Lightning BBS (Mystic) (SSH)</option>
+<option value="Lower Planes, The (SSH)|tlp.zapto.org:22|ssh">Lower Planes, The (SSH)</option>
+<option value="Mutiny BBS (SSH)|mutinybbs.com:22|ssh">Mutiny BBS (SSH)</option>
+<option value="Ninho do Abutre 2 BBS (SSH)|abutre.no-ip.org:22|ssh">Ninho do Abutre 2 BBS (SSH)</option>
+<option value="Outpost BBS (SSH)|bbs.outpostbbs.net:2202|ssh">Outpost BBS (SSH)</option>
+<option value="Phantasm (SSH)|phantasm.bbs.io:22|ssh">Phantasm (SSH)</option>
+<option value="Quantum Wormhole (SSH)|bbs.erb.pw:45022|ssh">Quantum Wormhole (SSH)</option>
+<option value="Shakey BBS (SSH)|shakeybbs.com:22|ssh">Shakey BBS (SSH)</option>
+<option value="Thunderbolt BBS (SSH)|tbolt.synchro.net:22036|ssh">Thunderbolt BBS (SSH)</option>
+<option value="Undercurrents BBS (Enigma) (SSH)|8086:22|ssh">Undercurrents BBS (Enigma) (SSH)</option>
+<option value="War Ensemble BBS (SSH)|warensemble.com:22|ssh">War Ensemble BBS (SSH)</option>
+<option value="Wintermute BBS (SSH)|new@wintermute.spdns.eu:2222|ssh">Wintermute BBS (SSH)</option>
+<option value="Xibalba (SSH)|xibalba.l33t.codes:44511|ssh">Xibalba (SSH)</option>
+<!-- Phenom Member Boards CUT HERE -->
+<option value="Phenom - Absinthe BBS|absinthebbs.net:1940">Phenom - Absinthe BBS</option>
+<option value="Phenom - Archaic Binary BBS|bbs.archaicbinary.net:23">Phenom - Archaic Binary BBS</option>
+<option value="Phenom - Bottomless Abyss BBS|bbs.bottomlessabyss.net:2023">Phenom - Bottomless Abyss BBS</option>
+<option value="Phenom - Catch 22 BBS|catch22.zapto.org:26">Phenom - Catch 22 BBS</option>
+<option value="Phenom - Ink Two BBS|bbs.inktwo.com:23">Phenom - Ink Two BBS</option>
+<option value="Phenom - Monterey BBS|montereybbs.com:23">Phenom - Monterey BBS</option>
+<option value="Phenom - Necronomicon BBS|necrobbs.strangled.net:23">Phenom - Necronomicon BBS</option>
+<option value="Phenom - Omicron Theta BBS|winserver.org:23">Phenom - Omicron Theta BBS</option>
+<option value="Phenom - Raiders Inc BBS|vintagebbsing.com:23">Phenom - Raiders Inc BBS</option>
+<option value="Phenom - The Byte Exchange BBS|bbs.thebyteexchange.com:23">Phenom - The Byte Exchange BBS</option>
+<option value="Phenom - Throwback BBS|bbs.throwbackbbs.com:23">Phenom - Throwback BBS</option>
+<option value="Phenom - Twinkle BBS|twinklebbs.xyz:23">Phenom - Twinkle BBS</option>
+<option value="Phenom - Xibalba BBS|xibalba.l33t.codes:44510">Phenom - Xibalba BBS</option>
+<!-- Phenom Member Boards CUT HERE -->
+<!-- </select> -->
+  </datalist>
+  </label>
+<!-- <input type="button" id="ADDRRESET" class="fTelnetConnectButton" onclick="resetAddress()" value="x"> -->
+</div>
+<div id="AutoRun" style="display:none">
+  <br>
+  [1] Auto-Run String <input id="input_AUTORUNSTR01" class="ConfigInput" value="new"><br>
+  [2] Auto-Run String <input id="input_AUTORUNSTR02" class="ConfigInput" value="new"><br>
+  [3] Auto-Run String <input id="input_AUTORUNSTR03" class="ConfigInput" value="new"><br>
+  [4] Auto-Run String <input id="input_AUTORUNSTR04" class="ConfigInput" value="new"><br>
+  <input type="button" id="AUTOEXEC" class="fTelnetConnectButton" onclick="executeAutoRun()" value="[ Run ]" style="color:#888888">
+</div>
+<div id="NOTESDIV" style="display:none">
+  <br>
+  <textarea id="NOTES" class="ConfigInput" onfocusin="enterTheNotes()" onfocusout="exitTheNotes()" cols="20" rows="1"></textarea>
+</div>
+<div id="CONFIG" style="display:none">
+  <br>
+  Favorite: 
+<select id="select_FAVORITES"  class="ConfigInput">
+  <option value="100" selected>100</option>
+  <option value="200">200</option>
+  <option value="300">300</option>
+</select>
+  <input type="button" id="button_LOADFAV" class="fTelnetConnectButton" onclick="loadElementsValueFav();" value="[ Load ]" style="color:#888888">
+  <input type="button" id="button_SAVEFAV" class="fTelnetConnectButton" onclick="saveElementsValueFav();" value="[ Save ]" style="color:#888888">
+  <br>
+  nick: <input id="input_USERNAME" class="ConfigInput" value="new" size="16">
+  <br>
+  pass: <input id="input_PASSWORD" type="PASSWORD" class="ConfigInput" value="new" size="16">
+  <!-- <input type="button" id="RESET" class="fTelnetConnectButton" onclick="window.JSInterface.resetApp();" value="[ Reset ]" style="color:#888888"> -->
+  <!-- <input type="button" id="RELOAD" class="fTelnetConnectButton" onclick="window.JSInterface.reloadApp();" value="[ Reload ]" style="color:#888888"> -->
+<br><label>Proxy<select id="select_PROXY" list="PROXYLIST" class="ConfigInput" onpropertychange="proxyChange(this)"></label> <option value='proxy-au.ftelnet.ca'>AU 001 Australia fTelnet Proxy</option> <option value='proxy-nl.ftelnet.ca'>EU 001 Netherlands fTelnet Proxy</option>
+ <option value='proxy-us-ga.ftelnet.ca'>US 001 Georgia fTelnet Proxy</option>
+ <option value='proxy-us-ca.ftelnet.ca'>US 002 California fTelnet Proxy</option>
+ <option value='proxy-us-nj.ftelnet.ca'>US 003 New Yersey fTelnet Proxy</option>
+ <option value='bbshub.org' selected>BBS HUB fTelnet Proxy</option>
+ <option value='127.0.0.1'>Localhost Proxy</option>
+ <option value=''>Direct Connection</option>
+</datalist>
+</select>
+<br>
+Favorites: <input id="FAV" type="button" value="FAV" class="fTelnetConnectButton" onclick="addServerToFav()">
+<input id="LASTFAV" type="button" value="LASTFAV" class="fTelnetConnectButton" onclick="getServerFromFav()">
+<br>
+RAND <input type="checkbox" id="checkbox_RANDOM" class="fTelnetConnectButton" style="color:#555557"> 
+WSS <input type="checkbox" id="checkbox_WSS" checked>
+SSH <input type="checkbox" id="checkbox_SSH" checked>
+</div>
+<div id="terminalStyle" name="terminalStyle" style="display:none">
+<br>
+<select id="select_consolePosition"  class="ConfigInput">
+  <option value="left" selected>left</option>
+  <option value="vsleft">vsleft</option>
+  <option value="sleft">sleft</option>
+  <option value="cleft">cleft</option>
+  <option value="center">center</option>
+  <option value="right">right</option>
+</select>
+<select id="select_consolePositionTop"  class="ConfigInput">
+  <option value="top" selected>top</option>
+  <option value="ltop">ltop</option>
+  <option value="mid">mid</option>
+  <option value="low">low</option>
+  <option value="lower">lower</option>
+</select>
+<select id="select_consoleLineSpacing"  class="ConfigInput">
+  <option value="100" selected>100</option>
+  <option value="110">110</option>
+  <option value="120">120</option>
+  <option value="130">130</option>
+  <option value="140">140</option>
+  <option value="150">150</option>
+</select>
+<select id="select_consoleFont"  class="ConfigInput" onchange="fontChange()">
+  <option value="monospace" selected>mono</option>
+  <option value="amknight">amknight</option>
+  <option value="amtopaz">amtopaz</option>
+  <option value="hack">hack</option>
+  <option value="AcPlus_Tandy1K-II_200L-2y">Tandy</option>
+  <option value="AcPlus_Tandy1K-II_200L">Tandy W</option>
+</select>
+<select id="select_consoleColor" class="ConfigInput" onchange="fontColorChange()">
+  <option value="DarkOrange" selected>DarkOrange</option>
+  <option value="White">White</option>
+  <option value="Silver">Silver</option>
+  <option value="Gray" selected>Gray</option>
+  <option value="Black">Black</option>
+  <option value="Red">Red</option>
+  <option value="Maroon">Maroon</option>
+  <option value="Yellow">Yellow</option>
+  <option value="Olive">Olive</option>
+  <option value="Lime">Lime</option>
+  <option value="Green">Green</option>
+  <option value="Aqua">Aqua</option>
+  <option value="Teal">Teal</option>
+  <option value="Blue">Blue</option>
+  <option value="Navy">Navy</option>
+  <option value="Fuchsia">Fuchsia</option>
+  <option value="Purple">Purple</option>
+  <option value="DarkGreen">DarkGreen</option>
+  <option value="Green">Green</option>
+  <option value="DarkOliveGreen">DarkOliveGreen</option>
+  <option value="ForestGreen">ForestGreen</option>
+  <option value="SeaGreen">SeaGreen</option>
+  <option value="Olive">Olive</option>
+  <option value="OliveDrab">OliveDrab</option>
+  <option value="MediumSeaGreen">MediumSeaGreen</option>
+  <option value="LimeGreen">LimeGreen</option>
+  <option value="Lime">Lime</option>
+  <option value="SpringGreen">SpringGreen</option>
+  <option value="MediumSpringGree">MediumSpringGree</option> 
+  <option value="DarkSeaGreen">DarkSeaGreen</option> 
+  <option value="MediumAquamarine">MediumAquamarine</option>
+  <option value="YellowGreen">YellowGreen</option>
+  <option value="LawnGreen">LawnGreen</option>
+  <option value="Chartreuse">Chartreuse</option>
+  <option value="LightGreen">LightGreen</option>
+  <option value="GreenYellow">GreenYellow</option>
+  <option value="PaleGreen">PaleGreen</option>
+  <option value="Orange">Orange</option>
+</select>
+<select id="select_consoleFontSize" class="ConfigInput" >
+  <option value="6px">6px</option>
+  <option value="7px" selected>7px</option>
+  <option value="8px">8px</option>
+  <option value="9px">9px</option>
+  <option value="10px">10px</option>
+  <option value="11px">11px</option>
+  <option value="12px">12px</option>
+  <option value="14px">14px</option>
+  <option value="18px">18px</option>
+  <option value="19px">19px</option>
+  <option value="20px">20px</option>
+  <option value="21px">21px</option>
+  <option value="22px">22px</option>
+  <option value="23px">23px</option>
+  <option value="24px">24px</option>
+  <option value="25px">26px</option>
+  <option value="26px">26px</option>
+  <option value="27px">27px</option>
+  <option value="28px">28px</option>
+  <option value="29px">29px</option>
+  <option value="30px">30px</option>
+  <option value="31px">31px</option>
+  <option value="32px">32px</option>
+  <option value="33px">33px</option>
+  <option value="34px">34px</option>
+  <option value="35px">35px</option>
+  <option value="36px">36px</option>
+  <option value="37px">37px</option>
+  <option value="38px">38px</option>
+  <option value="39px">39px</option>
+  <option value="40px">40px</option>
+  <option value="41px">41px</option>
+  <option value="45px">45px</option>
+</select>
+<select id="select_toggleColors" class="ConfigInput" >
+  <option value="0" selected>Mono</option>
+  <option value="1">Colo</option>
+</select>
+<script src="lib/ui.js" id="fTelnetUI"></script>
+</div>
+</div>
+</body>
+</html>
